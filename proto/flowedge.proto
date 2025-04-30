@@ -1,0 +1,51 @@
+
+syntax = "proto3";
+
+package flowedge;
+
+option go_package = "./proto;flowedgepb";
+
+enum MessageType {
+  UNKNOWN = 0;
+  REGISTER = 1;
+  HEARTBEAT = 2;
+  EXECUTE_REQUEST = 3;
+  EXECUTE_RESPONSE = 4;
+}
+
+message StreamMessage {
+  MessageType type = 1;
+  oneof body {
+    RegisterMessage register = 2;
+    HeartbeatMessage heartbeat = 3;
+    ExecuteRequest execute_request = 4;
+    ExecuteResponse execute_response = 5;
+  }
+}
+
+message RegisterMessage {
+  string agent_id = 1;
+  string hostname = 2;
+  string version = 3;
+}
+
+message HeartbeatMessage {
+  string agent_id = 1;
+  int64 timestamp = 2;
+}
+
+message ExecuteRequest {
+  string command_id = 1;
+  string shell_command = 2;
+}
+
+message ExecuteResponse {
+  string command_id = 1;
+  int32 exit_code = 2;
+  string output = 3;
+  string error = 4;
+}
+
+service FlowEdge {
+  rpc Communicate(stream StreamMessage) returns (stream StreamMessage);
+}
