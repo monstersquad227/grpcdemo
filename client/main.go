@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"io"
+	"io/ioutil"
 	"log"
-	"os/exec"
+	"net/http"
 	"time"
 
 	"google.golang.org/grpc"
@@ -65,19 +66,39 @@ func main() {
 		if msg.Type == pb.MessageType_EXECUTE_REQUEST {
 			req := msg.GetExecuteRequest()
 			log.Printf("Executing: %s", req.ShellCommand)
-			cmd := exec.Command("sh", "-c", req.ShellCommand)
-			output, err := cmd.CombinedOutput()
-			errStr := ""
+			//cmd := exec.Command("sh", "-c", req.ShellCommand)
+			//output, err := cmd.CombinedOutput()
+			//errStr := ""
+			//if err != nil {
+			//	errStr = err.Error()
+			//}
+
+			var output string
+			var errStr string
+			var exitCode int32 = 0
+
+			resp, err := http.Get("http://localhost:8080/devflow/actuator/health")
 			if err != nil {
 				errStr = err.Error()
+				exitCode = 1
+			} else {
+				body, err := ioutil.ReadAll(resp.Body)
+				resp.Body.Close()
+				if err != nil {
+					errStr = "read body error: " + err.Error()
+					exitCode = 2
+				} else {
+					output = string(body)
+				}
 			}
+
 			stream.Send(&pb.StreamMessage{
 				Type: pb.MessageType_EXECUTE_RESPONSE,
 				Body: &pb.StreamMessage_ExecuteResponse{
 					ExecuteResponse: &pb.ExecuteResponse{
 						CommandId: req.CommandId,
-						ExitCode:  0,
-						Output:    string(output),
+						ExitCode:  exitCode,
+						Output:    output,
 						Error:     errStr,
 					},
 				},
